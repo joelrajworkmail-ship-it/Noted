@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Record meetings, transcribe audio in real-time, and generate AI-powered summaries and notes">
+    <meta name="keywords" content="meeting transcription, voice to text, meeting notes, AI summary">
+    <meta name="author" content="Your Name">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="Meeting Transcriber - AI-Powered Notes">
+    <meta property="og:description" content="Record meetings and get instant transcriptions with AI-generated summaries">
+    <meta property="og:type" content="website">
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <title>Meeting Transcriber - AI-Powered Notes & Summaries</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .record-btn {
+            background: #ef4444;
+            color: white;
+        }
+
+        .record-btn:hover:not(:disabled) {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        .record-btn.recording {
+            background: #22c55e;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        .stop-btn {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .stop-btn:hover:not(:disabled) {
+            background: #d97706;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(245, 158, 11, 0.4);
+        }
+
+        .generate-btn {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .generate-btn:hover:not(:disabled) {
+            background: #7c3aed;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4);
+        }
+
+        .download-btn {
+            background: #06b6d4;
+            color: white;
+        }
+
+        .download-btn:hover:not(:disabled) {
+            background: #0891b2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(6, 182, 212, 0.4);
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .status.recording {
+            background: #dcfce7;
+            color: #166534;
+            border: 2px solid #86efac;
+        }
+
+        .status.processing {
+            background: #fef3c7;
+            color: #92400e;
+            border: 2px solid #fcd34d;
+        }
+
+        .status.ready {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 2px solid #93c5fd;
+        }
+
+        .transcript-section, .notes-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .transcript-box, .notes-box {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 150px;
+            max-height: 400px;
+            overflow-y: auto;
+            line-height: 1.6;
+            color: #374151;
+        }
+
+        .transcript-box {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .notes-box {
+            white-space: pre-wrap;
+        }
+
+        .empty-state {
+            color: #9ca3af;
+            font-style: italic;
+            text-align: center;
+        }
+
+        .timer {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .warning {
+            background: #fef2f2;
+            border: 2px solid #fecaca;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .loader {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+            font-size: 14px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                border-radius: 0;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎤 Meeting Transcriber & Notes</h1>
+            <p>Record meetings, get automatic transcription and AI-powered summaries</p>
+        </div>
+
+        <div class="content">
+            <div id="warning" class="warning" style="display: none;">
+                ⚠️ Microphone access is required. Please allow microphone permissions.
+            </div>
+
+            <div id="status" class="status" style="display: none;"></div>
+
+            <div class="timer" id="timer">00:00</div>
+
+            <div class="controls">
+                <button id="recordBtn" class="record-btn">
+                    <span>🔴</span> Start Recording
+                </button>
+                <button id="stopBtn" class="stop-btn" disabled>
+                    <span>⏹️</span> Stop Recording
+                </button>
+                <button id="generateBtn" class="generate-btn" disabled>
+                    <span>✨</span> Generate Notes
+                </button>
+                <button id="downloadBtn" class="download-btn" disabled>
+                    <span>💾</span> Download Document
+                </button>
+            </div>
+
+            <div class="transcript-section">
+                <div class="section-title">
+                    <span>📝</span> Live Transcript
+                </div>
+                <div id="transcript" class="transcript-box">
+                    <div class="empty-state">Transcript will appear here as you speak...</div>
+                </div>
+            </div>
+
+            <div class="notes-section">
+                <div class="section-title">
+                    <span>📋</span> Meeting Notes & Summary
+                </div>
+                <div id="notes" class="notes-box">
+                    <div class="empty-state">AI-generated notes will appear here after clicking "Generate Notes"...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            Made with ❤️ | <a href="#" id="installBtn" style="display: none;">Install as App</a>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let transcript = '';
+        let timerInterval;
+        let seconds = 0;
+        let recognition;
+        let deferredPrompt;
+
+        const recordBtn = document.getElementById('recordBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const generateBtn = document.getElementById('generateBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const transcriptDiv = document.getElementById('transcript');
+        const notesDiv = document.getElementById('notes');
+        const statusDiv = document.getElementById('status');
+        const timerDiv = document.getElementById('timer');
+        const warningDiv = document.getElementById('warning');
+        const installBtn = document.getElementById('installBtn');
+
+        // PWA Install prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'inline';
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                deferredPrompt = null;
+                installBtn.style.display = 'none';
+            }
+        });
+
+        // Initialize Speech Recognition
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                warningDiv.textContent = '⚠️ Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.';
+                warningDiv.style.display = 'block';
+                return null;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcriptPiece = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcriptPiece + ' ';
+                    } else {
+                        interimTranscript += transcriptPiece;
+                    }
+                }
+
+                if (finalTranscript) {
+                    transcript += finalTranscript;
+                    updateTranscriptDisplay();
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                if (event.error === 'not-allowed') {
+                    warningDiv.textContent = '⚠️ Microphone access denied. Please allow microphone permissions and refresh the page.';
+                    warningDiv.style.display = 'block';
+                }
+            };
+
+            return recognition;
+        }
+
+        function updateTranscriptDisplay() {
+            if (transcript.trim()) {
+                transcriptDiv.innerHTML = transcript.replace(/\n/g, '<br>');
+                transcriptDiv.scrollTop = transcriptDiv.scrollHeight;
+            }
+        }
+
+        function updateTimer() {
+            seconds++;
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            timerDiv.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+        }
+
+        recordBtn.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                if (!recognition) {
+                    recognition = initSpeechRecognition();
+                    if (!recognition) return;
+                }
+
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                transcript = '';
+                seconds = 0;
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.start();
+                recognition.start();
+
+                timerInterval = setInterval(updateTimer, 1000);
+
+                recordBtn.disabled = true;
+                recordBtn.classList.add('recording');
+                recordBtn.innerHTML = '<span>🔴</span> Recording...';
+                stopBtn.disabled = false;
+                
+                showStatus('🎤 Recording in progress...', 'recording');
+                transcriptDiv.innerHTML = '<div class="empty-state">Listening... Start speaking now.</div>';
+
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                warningDiv.textContent = '⚠️ Could not access microphone. Please check permissions.';
+                warningDiv.style.display = 'block';
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                recognition.stop();
+                clearInterval(timerInterval);
+
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+
+                recordBtn.disabled = false;
+                recordBtn.classList.remove('recording');
+                recordBtn.innerHTML = '<span>🔴</span> Start Recording';
+                stopBtn.disabled = true;
+                generateBtn.disabled = false;
+
+                showStatus('✅ Recording completed! Click "Generate Notes" to create summary.', 'ready');
+                updateTranscriptDisplay();
+            }
+        });
+
+        generateBtn.addEventListener('click', async () => {
+            if (!transcript.trim()) {
+                alert('No transcript available. Please record some audio first.');
+                return;
+            }
+
+            generateBtn.disabled = true;
+            showStatus('⚙️ Generating meeting notes and summary...', 'processing');
+            notesDiv.innerHTML = '<div class="loader"></div>';
+
+            try {
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514',
+                        max_tokens: 1000,
+                        messages: [{
+                            role: 'user',
+                            content: `Please analyze this meeting transcript and provide:
+
+1. A brief summary (2-3 sentences)
+2. Key discussion points (bullet points)
+3. Action items (if any)
+4. Important decisions made (if any)
+
+Transcript:
+${transcript}
+
+Format the output in a clear, professional way suitable for meeting notes.`
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                const notes = data.content[0].text;
+
+                notesDiv.innerHTML = notes.replace(/\n/g, '<br>');
+                downloadBtn.disabled = false;
+                showStatus('✅ Meeting notes generated successfully!', 'ready');
+
+            } catch (error) {
+                console.error('Error generating notes:', error);
+                notesDiv.innerHTML = `<div style="color: #dc2626;">Error generating notes. Please try again.</div>`;
+                showStatus('❌ Error generating notes', 'ready');
+            } finally {
+                generateBtn.disabled = false;
+            }
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            const notesContent = notesDiv.innerText;
+            const transcriptContent = transcript;
+
+            const documentContent = `MEETING NOTES
+===============
+
+Date: ${new Date().toLocaleString()}
+Duration: ${timerDiv.textContent}
+
+SUMMARY & KEY POINTS
+-------------------
+${notesContent}
+
+FULL TRANSCRIPT
+--------------
+${transcriptContent}
+`;
+
+            const blob = new Blob([documentContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `meeting-notes-${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                warningDiv.textContent = '⚠️ Your browser does not support audio recording. Please use a modern browser like Chrome, Edge, or Safari.';
+                warningDiv.style.display = 'block';
+                recordBtn.disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>
