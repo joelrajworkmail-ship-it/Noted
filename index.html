@@ -1,107 +1,36 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Meeting Recorder</title>
-
-<style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f4f6fa;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
-.box {
-  background: #fff;
-  padding: 30px;
-  border-radius: 10px;
-  width: 320px;
-  text-align: center;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-}
-
-button {
-  padding: 12px 20px;
-  font-size: 16px;
-  margin: 10px;
-  cursor: pointer;
-}
-
-#status {
-  margin-top: 15px;
-  font-weight: bold;
-}
-</style>
-</head>
-
-<body>
-<div class="box">
-  <h2>🎤 Meeting Recorder</h2>
-
-  <button id="startBtn">Start Recording</button>
-  <button id="stopBtn" disabled>Stop Recording</button>
-
-  <div id="status">Idle</div>
-</div>
-
 <script>
-let mediaRecorder;
-let audioChunks = [];
+const GITHUB_TOKEN = "PASTE_YOUR_GITHUB_TOKEN_HERE";
+const OWNER = "joelrajworkmail-ship-it";
+const REPO = "Noted";
+const FILE_PATH = "audio/meeting.webm";
 
-/* 🔴 PASTE YOUR N8N PRODUCTION WEBHOOK URL HERE */
-const N8N_WEBHOOK_URL = "https://joelrajs.app.n8n.cloud/webhook/meeting-audio";
+async function uploadAudioToGitHub(audioBlob) {
+  const base64Data = await audioBlob.arrayBuffer().then(buffer =>
+    btoa(String.fromCharCode(...new Uint8Array(buffer)))
+  );
 
-const startBtn = document.getElementById("startBtn");
-const stopBtn = document.getElementById("stopBtn");
-const statusDiv = document.getElementById("status");
+  const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`;
 
-startBtn.onclick = async () => {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Authorization": `Bearer ${GITHUB_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      message: "Upload meeting audio",
+      content: base64Data,
+      committer: {
+        name: "Meeting Bot",
+        email: "bot@noted.ai"
+      }
+    })
+  });
 
-  audioChunks = [];
+  if (!response.ok) {
+    throw new Error("GitHub upload failed");
+  }
 
-  mediaRecorder.ondataavailable = event => {
-    audioChunks.push(event.data);
-  };
-
-  mediaRecorder.start();
-
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
-  statusDiv.textContent = "Recording...";
-};
-
-stopBtn.onclick = async () => {
-  mediaRecorder.stop();
-
-  mediaRecorder.onstop = async () => {
-    statusDiv.textContent = "Sending audio to AI...";
-    
-    const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-    const formData = new FormData();
-    formData.append("data", audioBlob, "meeting.webm");
-
-    try {
-      await fetch(N8N_WEBHOOK_URL, {
-        method: "POST",
-        body: formData
-      });
-
-      statusDiv.textContent = "✅ Sent! AI is processing...";
-    } catch (error) {
-      console.error(error);
-      statusDiv.textContent = "❌ Failed to send audio";
-    }
-
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
-  };
-};
+  return `https://raw.githubusercontent.com/${OWNER}/${REPO}/main/${FILE_PATH}`;
+}
 </script>
-</body>
-</html>
