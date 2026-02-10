@@ -3,57 +3,127 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Meeting Recorder</title>
+<title>Noted — Smart Meeting Recorder</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f4f6fa;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+* {
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
 }
 
-.box {
-  background: #fff;
-  padding: 30px;
-  border-radius: 10px;
-  width: 320px;
+body {
+  margin: 0;
+  height: 100vh;
+  background: linear-gradient(135deg, #b00020, #7a0016);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.container {
+  background: rgba(0,0,0,0.25);
+  backdrop-filter: blur(12px);
+  border-radius: 18px;
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
   text-align: center;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+}
+
+.logo {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.tagline {
+  font-size: 14px;
+  opacity: 0.9;
+  margin-bottom: 30px;
+}
+
+.status {
+  margin: 20px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.controls {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
 }
 
 button {
-  padding: 12px 20px;
+  border: none;
+  padding: 14px 24px;
+  border-radius: 12px;
   font-size: 16px;
-  margin: 10px;
+  font-weight: 600;
   cursor: pointer;
+  min-width: 130px;
+  transition: all 0.2s ease;
 }
 
-#status {
-  margin-top: 15px;
-  font-weight: bold;
+.record {
+  background: #ff1744;
+  color: white;
+}
+
+.record:hover {
+  background: #ff4569;
+}
+
+.stop {
+  background: white;
+  color: #b00020;
+}
+
+.stop:hover {
+  background: #f1f1f1;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.footer {
+  margin-top: 30px;
+  font-size: 12px;
+  opacity: 0.7;
 }
 </style>
 </head>
 
 <body>
-<div class="box">
-  <h2>🎤 Meeting Recorder</h2>
 
-  <button id="startBtn">Start Recording</button>
-  <button id="stopBtn" disabled>Stop Recording</button>
+<div class="container">
+  <div class="logo">Noted</div>
+  <div class="tagline">Record. Remember. Summarize.</div>
 
-  <div id="status">Idle</div>
+  <div class="status" id="status">Ready to record</div>
+
+  <div class="controls">
+    <button class="record" id="startBtn">● Record</button>
+    <button class="stop" id="stopBtn" disabled>■ Stop</button>
+  </div>
+
+  <div class="footer">
+    Your meeting memory, simplified.
+  </div>
 </div>
 
 <script>
 let mediaRecorder;
 let audioChunks = [];
 
-/* 🔴 PASTE YOUR N8N PRODUCTION WEBHOOK URL HERE */
-const N8N_WEBHOOK_URL = "https://joelrajs.app.n8n.cloud/webhook-test/meeting-audio";
+/* ✅ PRODUCTION WEBHOOK — DO NOT USE TEST URL */
+const N8N_WEBHOOK_URL = "https://joelrajs.app.n8n.cloud/webhook/meeting-audio";
 
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
@@ -73,18 +143,20 @@ startBtn.onclick = async () => {
 
   startBtn.disabled = true;
   stopBtn.disabled = false;
-  statusDiv.textContent = "Recording...";
+  statusDiv.textContent = "Recording…";
 };
 
-stopBtn.onclick = async () => {
+stopBtn.onclick = () => {
   mediaRecorder.stop();
 
   mediaRecorder.onstop = async () => {
-    statusDiv.textContent = "Sending audio to AI...";
-    
+    statusDiv.textContent = "Uploading to Noted…";
+
     const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
     const formData = new FormData();
-    formData.append("data", audioBlob, "meeting.webm");
+
+    /* 🔑 MUST MATCH n8n → Field Name for Binary Data = data */
+    formData.append("data", audioBlob, `noted-${Date.now()}.webm`);
 
     try {
       await fetch(N8N_WEBHOOK_URL, {
@@ -92,10 +164,10 @@ stopBtn.onclick = async () => {
         body: formData
       });
 
-      statusDiv.textContent = "✅ Sent! AI is processing...";
-    } catch (error) {
-      console.error(error);
-      statusDiv.textContent = "❌ Failed to send audio";
+      statusDiv.textContent = "Uploaded. AI is summarizing…";
+    } catch (err) {
+      console.error(err);
+      statusDiv.textContent = "Upload failed ❌";
     }
 
     startBtn.disabled = false;
@@ -103,5 +175,6 @@ stopBtn.onclick = async () => {
   };
 };
 </script>
+
 </body>
 </html>
