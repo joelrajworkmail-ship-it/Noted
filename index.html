@@ -5,14 +5,10 @@
   <title>Noted — Smart Meeting Recorder</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-  <!-- Google Font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
   <style>
-    * {
-      box-sizing: border-box;
-      font-family: 'Inter', sans-serif;
-    }
+    * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
 
     body {
       margin: 0;
@@ -29,37 +25,17 @@
       backdrop-filter: blur(12px);
       border-radius: 16px;
       padding: 40px;
-      width: 100%;
       max-width: 420px;
       text-align: center;
       box-shadow: 0 20px 50px rgba(0,0,0,0.4);
     }
 
-    .logo {
-      font-size: 36px;
-      font-weight: 700;
-      margin-bottom: 10px;
-      letter-spacing: 1px;
-    }
+    .logo { font-size: 36px; font-weight: 700; }
+    .tagline { font-size: 14px; opacity: 0.9; margin-bottom: 30px; }
 
-    .tagline {
-      font-size: 14px;
-      opacity: 0.9;
-      margin-bottom: 30px;
-    }
+    .status { margin: 20px 0; font-size: 14px; font-weight: 600; }
 
-    .status {
-      margin: 20px 0;
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    .controls {
-      display: flex;
-      gap: 16px;
-      justify-content: center;
-      margin-top: 20px;
-    }
+    .controls { display: flex; gap: 16px; justify-content: center; }
 
     button {
       border: none;
@@ -68,96 +44,83 @@
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s ease;
       min-width: 120px;
     }
 
-    .record {
-      background: #ff1744;
-      color: white;
-    }
+    .record { background: #ff1744; color: white; }
+    .stop { background: white; color: #b00020; }
 
-    .record:hover {
-      background: #ff4569;
-    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    .stop {
-      background: #ffffff;
-      color: #b00020;
-    }
-
-    .stop:hover {
-      background: #f1f1f1;
-    }
-
-    .footer {
-      margin-top: 30px;
-      font-size: 12px;
-      opacity: 0.7;
-    }
+    .footer { margin-top: 30px; font-size: 12px; opacity: 0.7; }
   </style>
 </head>
+
 <body>
 
-  <div class="container">
-    <div class="logo">Noted</div>
-    <div class="tagline">Record. Remember. Summarize.</div>
+<div class="container">
+  <div class="logo">Noted</div>
+  <div class="tagline">Record. Remember. Summarize.</div>
 
-    <div class="status" id="status">Ready to record</div>
+  <div class="status" id="status">Ready to record</div>
 
-    <div class="controls">
-      <button class="record" id="recordBtn">● Record</button>
-      <button class="stop" id="stopBtn" disabled>■ Stop</button>
-    </div>
-
-    <div class="footer">
-      Your meeting memory, simplified.
-    </div>
+  <div class="controls">
+    <button class="record" id="recordBtn">● Record</button>
+    <button class="stop" id="stopBtn" disabled>■ Stop</button>
   </div>
 
-  <script>
-    let mediaRecorder;
-    let audioChunks = [];
+  <div class="footer">Your meeting memory, simplified.</div>
+</div>
 
-    const recordBtn = document.getElementById("recordBtn");
-    const stopBtn = document.getElementById("stopBtn");
-    const statusText = document.getElementById("status");
+<script>
+  const WEBHOOK_URL = "https://YOUR_N8N_WEBHOOK_URL";
 
-    recordBtn.onclick = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
-      audioChunks = [];
+  let mediaRecorder;
+  let audioChunks = [];
 
-      mediaRecorder.ondataavailable = event => {
-        audioChunks.push(event.data);
-      };
+  const recordBtn = document.getElementById("recordBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const statusText = document.getElementById("status");
 
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        const url = URL.createObjectURL(audioBlob);
+  recordBtn.onclick = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
 
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `noted-${Date.now()}.webm`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
-        statusText.textContent = "Recording saved";
-      };
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
 
-      mediaRecorder.start();
-      statusText.textContent = "Recording…";
-      recordBtn.disabled = true;
-      stopBtn.disabled = false;
+      const formData = new FormData();
+      formData.append(
+        "file",
+        audioBlob,
+        `noted-${Date.now()}.webm`
+      );
+
+      statusText.textContent = "Uploading to Noted…";
+
+      await fetch(WEBHOOK_URL, {
+        method: "POST",
+        body: formData
+      });
+
+      statusText.textContent = "Uploaded. Processing summary…";
     };
 
-    stopBtn.onclick = () => {
-      mediaRecorder.stop();
-      recordBtn.disabled = false;
-      stopBtn.disabled = true;
-    };
-  </script>
+    mediaRecorder.start();
+    statusText.textContent = "Recording…";
+    recordBtn.disabled = true;
+    stopBtn.disabled = false;
+  };
+
+  stopBtn.onclick = () => {
+    mediaRecorder.stop();
+    recordBtn.disabled = false;
+    stopBtn.disabled = true;
+  };
+</script>
 
 </body>
 </html>
