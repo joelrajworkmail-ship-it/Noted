@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Record meetings, transcribe audio with AI, and generate professional summaries">
+    <title>Meeting Transcriber - AI-Powered by Gemini</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .record-btn {
+            background: #ef4444;
+            color: white;
+        }
+
+        .record-btn:hover:not(:disabled) {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        .record-btn.recording {
+            background: #22c55e;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .stop-btn {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .stop-btn:hover:not(:disabled) {
+            background: #d97706;
+            transform: translateY(-2px);
+        }
+
+        .generate-btn {
+            background: #8b5cf6;
+            color: white;
+        }
+
+        .generate-btn:hover:not(:disabled) {
+            background: #7c3aed;
+            transform: translateY(-2px);
+        }
+
+        .download-btn {
+            background: #06b6d4;
+            color: white;
+        }
+
+        .download-btn:hover:not(:disabled) {
+            background: #0891b2;
+            transform: translateY(-2px);
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .status.recording {
+            background: #dcfce7;
+            color: #166534;
+            border: 2px solid #86efac;
+        }
+
+        .status.processing {
+            background: #fef3c7;
+            color: #92400e;
+            border: 2px solid #fcd34d;
+        }
+
+        .status.ready {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 2px solid #93c5fd;
+        }
+
+        .transcript-section, .notes-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .transcript-box, .notes-box {
+            background: #f9fafb;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 150px;
+            max-height: 400px;
+            overflow-y: auto;
+            line-height: 1.6;
+            color: #374151;
+        }
+
+        .transcript-box {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .empty-state {
+            color: #9ca3af;
+            font-style: italic;
+            text-align: center;
+        }
+
+        .timer {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .warning {
+            background: #fef2f2;
+            border: 2px solid #fecaca;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .loader {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+            font-size: 14px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        @media (max-width: 768px) {
+            .container { border-radius: 0; }
+            .header h1 { font-size: 24px; }
+            .controls { flex-direction: column; }
+            button { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎤 AI Meeting Transcriber</h1>
+            <p>Powered by Google Gemini AI - Professional transcription & summaries</p>
+        </div>
+
+        <div class="content">
+            <div id="warning" class="warning" style="display: none;">
+                ⚠️ Microphone access is required. Please allow microphone permissions.
+            </div>
+
+            <div id="status" class="status" style="display: none;"></div>
+
+            <div class="timer" id="timer">00:00</div>
+
+            <div class="controls">
+                <button id="recordBtn" class="record-btn">
+                    <span>🔴</span> Start Recording
+                </button>
+                <button id="stopBtn" class="stop-btn" disabled>
+                    <span>⏹️</span> Stop Recording
+                </button>
+                <button id="generateBtn" class="generate-btn" disabled>
+                    <span>✨</span> Analyze with Gemini AI
+                </button>
+                <button id="downloadBtn" class="download-btn" disabled>
+                    <span>💾</span> Download Notes
+                </button>
+            </div>
+
+            <div class="transcript-section">
+                <div class="section-title">
+                    <span>📝</span> Live Transcript
+                </div>
+                <div id="transcript" class="transcript-box">
+                    <div class="empty-state">Transcript will appear here as you speak...</div>
+                </div>
+            </div>
+
+            <div class="notes-section">
+                <div class="section-title">
+                    <span>📋</span> Gemini AI Analysis
+                </div>
+                <div id="notes" class="notes-box">
+                    <div class="empty-state">AI analysis will appear here after processing...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            Made with ❤️ | Powered by Google Gemini AI
+        </div>
+    </div>
+
+    <script>
+        // Gemini API configuration
+        const GEMINI_API_KEY = 'AIzaSyCa96x3Tqg3wa42OriJD2CYBsvioV8SCoQ';
+        const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
+        let mediaRecorder;
+        let audioChunks = [];
+        let transcript = '';
+        let timerInterval;
+        let seconds = 0;
+        let recognition;
+        let recordedAudioBlob = null;
+
+        const recordBtn = document.getElementById('recordBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const generateBtn = document.getElementById('generateBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const transcriptDiv = document.getElementById('transcript');
+        const notesDiv = document.getElementById('notes');
+        const statusDiv = document.getElementById('status');
+        const timerDiv = document.getElementById('timer');
+        const warningDiv = document.getElementById('warning');
+
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                warningDiv.textContent = '⚠️ Speech recognition not supported. Will use Gemini for transcription.';
+                warningDiv.style.display = 'block';
+                return null;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript + ' ';
+                    }
+                }
+                if (finalTranscript) {
+                    transcript += finalTranscript;
+                    updateTranscriptDisplay();
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+            };
+
+            return recognition;
+        }
+
+        function updateTranscriptDisplay() {
+            if (transcript.trim()) {
+                transcriptDiv.innerHTML = transcript.replace(/\n/g, '<br>');
+                transcriptDiv.scrollTop = transcriptDiv.scrollHeight;
+            }
+        }
+
+        function updateTimer() {
+            seconds++;
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            timerDiv.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+        }
+
+        recordBtn.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                if (!recognition) {
+                    recognition = initSpeechRecognition();
+                }
+
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                transcript = '';
+                seconds = 0;
+                recordedAudioBlob = null;
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    console.log('Audio recorded:', recordedAudioBlob.size, 'bytes');
+                };
+
+                mediaRecorder.start();
+                if (recognition) recognition.start();
+                timerInterval = setInterval(updateTimer, 1000);
+
+                recordBtn.disabled = true;
+                recordBtn.classList.add('recording');
+                recordBtn.innerHTML = '<span>🔴</span> Recording...';
+                stopBtn.disabled = false;
+                
+                showStatus('🎤 Recording in progress...', 'recording');
+                transcriptDiv.innerHTML = '<div class="empty-state">Listening... Start speaking now.</div>';
+
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                warningDiv.textContent = '⚠️ Could not access microphone. Check permissions.';
+                warningDiv.style.display = 'block';
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                if (recognition) recognition.stop();
+                clearInterval(timerInterval);
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+
+                recordBtn.disabled = false;
+                recordBtn.classList.remove('recording');
+                recordBtn.innerHTML = '<span>🔴</span> Start Recording';
+                stopBtn.disabled = true;
+                generateBtn.disabled = false;
+
+                showStatus('✅ Recording completed! Click "Analyze with Gemini AI" for summary.', 'ready');
+                updateTranscriptDisplay();
+            }
+        });
+
+        generateBtn.addEventListener('click', async () => {
+            if (!transcript.trim() && !recordedAudioBlob) {
+                alert('No recording available. Please record some audio first.');
+                return;
+            }
+
+            generateBtn.disabled = true;
+            showStatus('⚙️ Analyzing with Gemini AI... Processing audio and generating summary...', 'processing');
+            notesDiv.innerHTML = '<div class="loader"></div><p style="text-align: center; color: #6b7280; margin-top: 10px;">Gemini AI is analyzing your meeting... This may take 15-30 seconds</p>';
+
+            try {
+                let analysisText = transcript;
+
+                // If we have audio but no transcript, convert audio to base64 and let Gemini transcribe it
+                if (recordedAudioBlob && !transcript.trim()) {
+                    showStatus('⚙️ Gemini is transcribing your audio...', 'processing');
+                    const base64Audio = await blobToBase64(recordedAudioBlob);
+                    
+                    // First, get transcription from Gemini
+                    const transcriptResponse = await callGeminiWithAudio(base64Audio, 
+                        "Please transcribe this audio recording accurately. Provide only the transcription, no additional commentary.");
+                    
+                    if (transcriptResponse) {
+                        analysisText = transcriptResponse;
+                        transcript = transcriptResponse;
+                        updateTranscriptDisplay();
+                    }
+                }
+
+                // Now analyze the transcript
+                showStatus('⚙️ Gemini is generating professional meeting notes...', 'processing');
+                
+                const prompt = `You are a professional meeting note-taker. Analyze this meeting transcript and provide a comprehensive summary with the following sections:
+
+1. EXECUTIVE SUMMARY (2-3 sentences)
+2. KEY DISCUSSION POINTS (bullet points)
+3. ACTION ITEMS (specific tasks, who should do them, and deadlines if mentioned)
+4. DECISIONS MADE (concrete decisions reached)
+5. NEXT STEPS (what should happen next)
+
+Transcript:
+${analysisText}
+
+Please format the output in a clear, professional manner suitable for distribution to meeting attendees.`;
+
+                const summary = await callGemini(prompt);
+                
+                if (summary) {
+                    displayGeminiAnalysis(summary);
+                    downloadBtn.disabled = false;
+                    showStatus('✅ Gemini AI analysis completed successfully!', 'ready');
+                } else {
+                    throw new Error('No response from Gemini API');
+                }
+
+            } catch (error) {
+                console.error('Gemini API error:', error);
+                notesDiv.innerHTML = `
+                    <div style="color: #dc2626; padding: 20px; background: #fef2f2; border-radius: 8px; border-left: 4px solid #dc2626;">
+                        <h3 style="margin-bottom: 10px;">❌ Error Processing with Gemini</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <br>
+                        <p><strong>Possible solutions:</strong></p>
+                        <ul style="margin-left: 20px; margin-top: 10px; line-height: 1.8;">
+                            <li>Check your internet connection</li>
+                            <li>Verify Gemini API key is valid</li>
+                            <li>Check API quota/limits</li>
+                            <li>Try a shorter recording</li>
+                            <li>Check browser console (F12) for details</li>
+                        </ul>
+                        <br>
+                        <div style="background: #fef3c7; padding: 15px; border-radius: 5px; color: #92400e; margin-top: 15px;">
+                            <p><strong>💡 Your transcript is still available above!</strong></p>
+                            <p style="margin-top: 5px; font-size: 14px;">You can copy it manually or download it using the Download button.</p>
+                        </div>
+                    </div>
+                `;
+                showStatus('❌ Error - transcript still available', 'ready');
+                downloadBtn.disabled = false;
+            } finally {
+                generateBtn.disabled = false;
+            }
+        });
+
+        async function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        async function callGemini(prompt) {
+            const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 2048,
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data.candidates[0]?.content?.parts[0]?.text || null;
+        }
+
+        async function callGeminiWithAudio(base64Audio, prompt) {
+            const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            {
+                                inline_data: {
+                                    mime_type: "audio/webm",
+                                    data: base64Audio
+                                }
+                            }
+                        ]
+                    }],
+                    generationConfig: {
+                        temperature: 0.4,
+                        maxOutputTokens: 2048,
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Gemini API error: ${errorData.error?.message || response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data.candidates[0]?.content?.parts[0]?.text || null;
+        }
+
+        function displayGeminiAnalysis(summary) {
+            const wordCount = transcript.split(/\s+/).length;
+            const sentenceCount = transcript.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+
+            let html = `<div style="font-family: 'Segoe UI', sans-serif; line-height: 1.8;">`;
+            
+            // Header
+            html += `
+                <div style="border-bottom: 3px solid #4285f4; padding-bottom: 10px; margin-bottom: 20px;">
+                    <h2 style="color: #4285f4; margin: 0;">🤖 Gemini AI Meeting Analysis</h2>
+                    <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">
+                        Powered by Google Gemini 1.5 Flash | Duration: ${timerDiv.textContent}
+                    </p>
+                </div>
+            `;
+
+            // Summary with nice formatting
+            html += `
+                <div style="background: linear-gradient(135deg, #e8f0fe 0%, #f0f7ff 100%); padding: 25px; border-radius: 12px; margin-bottom: 25px; border-left: 4px solid #4285f4;">
+                    <div style="color: #1a73e8; white-space: pre-wrap; line-height: 1.9; font-size: 15px;">
+                        ${summary.replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            `;
+
+            // Statistics
+            html += `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
+                    <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 3px solid #22c55e;">
+                        <div style="font-size: 12px; color: #166534; font-weight: 600;">DURATION</div>
+                        <div style="font-size: 20px; color: #15803d; font-weight: 700; margin-top: 5px;">⏱️ ${timerDiv.textContent}</div>
+                    </div>
+                    <div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 3px solid #f59e0b;">
+                        <div style="font-size: 12px; color: #92400e; font-weight: 600;">WORDS</div>
+                        <div style="font-size: 20px; color: #b45309; font-weight: 700; margin-top: 5px;">💬 ${wordCount}</div>
+                    </div>
+                    <div style="background: #ede9fe; padding: 15px; border-radius: 8px; border-left: 3px solid #8b5cf6;">
+                        <div style="font-size: 12px; color: #6d28d9; font-weight: 600;">SENTENCES</div>
+                        <div style="font-size: 20px; color: #7c3aed; font-weight: 700; margin-top: 5px;">📝 ${sentenceCount}</div>
+                    </div>
+                </div>
+            `;
+
+            // Note
+            html += `
+                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; border: 2px dashed #cbd5e1; text-align: center;">
+                    <p style="color: #475569; margin: 0;">
+                        <strong>📄 Full Transcript:</strong> Available in the Live Transcript section above
+                    </p>
+                </div>
+            `;
+
+            html += `</div>`;
+            notesDiv.innerHTML = html;
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            const notesText = notesDiv.innerText || notesDiv.textContent;
+            const documentContent = `MEETING NOTES - GEMINI AI ANALYSIS
+===============================
+
+Date: ${new Date().toLocaleString()}
+Duration: ${timerDiv.textContent}
+
+${notesText}
+
+═══════════════════════════════════════════════════════════
+
+FULL TRANSCRIPT
+═══════════════════════════════════════════════════════════
+
+${transcript}
+
+═══════════════════════════════════════════════════════════
+Analyzed by Google Gemini AI
+`;
+
+            const blob = new Blob([documentContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `gemini-meeting-notes-${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        window.addEventListener('load', () => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                warningDiv.textContent = '⚠️ Audio recording not supported. Use Chrome, Edge, or Safari.';
+                warningDiv.style.display = 'block';
+                recordBtn.disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>
